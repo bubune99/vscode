@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------------------------------------
- *  AI Orchestrator Contribution - Main Registration File
- *  Location in VS Code fork: src/vs/workbench/contrib/aiOrchestrator/browser/aiOrchestrator.contribution.ts
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
 import { ThemeIcon } from '../../../../base/common/themables.js';
@@ -10,13 +10,33 @@ import { SyncDescriptor } from '../../../../platform/instantiation/common/descri
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
 import { ViewPaneContainer } from '../../../browser/parts/views/viewPaneContainer.js';
 import { IViewContainersRegistry, ViewContainerLocation, Extensions as ViewExtensions, IViewsRegistry } from '../../../common/views.js';
-import { IAIOrchestratorService } from '../common/aiOrchestratorService.js';
-import { AIOrchestratorService } from '../node/aiOrchestratorServiceImpl.js';
+import { EditorExtensions } from '../../../common/editor.js';
 import { AIOrchestratorPanel } from './aiOrchestratorPanel.js';
-import { MissionControlPanel } from './missionControlPanel.js';
+import { MissionControlEditor, MissionControlEditorInput } from './missionControlEditor.js';
+import { EditorPaneDescriptor, IEditorPaneRegistry } from '../../../browser/editor.js';
+import { IEditorService } from '../../../services/editor/common/editorService.js';
+import { IChatService } from '../common/chatService.js';
+import { ChatService } from '../common/chatServiceImpl.js';
+import { ILogService } from '../../../../platform/log/common/log.js';
+import { IDatabaseService } from '../common/databaseService.js';
+import { IWorkbenchContribution, IWorkbenchContributionsRegistry, Extensions as WorkbenchExtensions } from '../../../common/contributions.js';
+import { LifecyclePhase } from '../../../services/lifecycle/common/lifecycle.js';
 
-// Register the AI Orchestrator service
-registerSingleton(IAIOrchestratorService, AIOrchestratorService, InstantiationType.Delayed);
+// Register the Chat service (browser-safe)
+registerSingleton(IChatService, ChatService, InstantiationType.Delayed);
+
+// Note: AIOrchestratorService and DatabaseService are registered in node/aiOrchestrator.node.contribution.ts
+// They require Node.js APIs and cannot be registered in the browser layer
+
+// Register Mission Control Editor
+Registry.as<IEditorPaneRegistry>(EditorExtensions.EditorPane).registerEditorPane(
+	EditorPaneDescriptor.create(
+		MissionControlEditor,
+		MissionControlEditor.ID,
+		localize('missionControlEditor', "Mission Control")
+	),
+	[new SyncDescriptor(MissionControlEditorInput)]
+);
 
 // Register the AI Orchestrator view container in the sidebar
 const VIEW_CONTAINER = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry).registerViewContainer({
@@ -32,16 +52,6 @@ const VIEW_CONTAINER = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewC
 // Register the AI Orchestrator views (panel content)
 Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([
 	{
-		id: 'workbench.view.aiOrchestrator.missionControl',
-		name: { value: localize('missionControl', "Mission Control"), original: 'Mission Control' },
-		containerIcon: ThemeIcon.fromId('dashboard'),
-		ctorDescriptor: new SyncDescriptor(MissionControlPanel),
-		canToggleVisibility: true,
-		canMoveView: true,
-		weight: 100,
-		order: 1,
-	},
-	{
 		id: 'workbench.view.aiOrchestrator.panel',
 		name: { value: localize('aiOrchestratorPanel', "AI Agents"), original: 'AI Agents' },
 		containerIcon: ThemeIcon.fromId('robot'),
@@ -49,7 +59,7 @@ Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([
 		canToggleVisibility: true,
 		canMoveView: true,
 		weight: 90,
-		order: 2,
+		order: 1,
 	}
 ], VIEW_CONTAINER);
 
@@ -142,3 +152,58 @@ CommandsRegistry.registerCommand('aiOrchestrator.runGPTAgent', async (accessor: 
 	}
 	*/
 });
+
+// Command: Open Mission Control (Full Window)
+CommandsRegistry.registerCommand('aiOrchestrator.openMissionControl', async (accessor: ServicesAccessor) => {
+	const editorService = accessor.get(IEditorService);
+	const input = new MissionControlEditorInput();
+	await editorService.openEditor(input, { pinned: true });
+});
+
+// Database will be initialized on-demand when workspace opens
+// No need for chat providers initializer - using VS Code's native chat system
+
+// Database workspace initializer
+import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
+
+class DatabaseInitializer implements IWorkbenchContribution {
+	constructor(
+		@IDatabaseService private readonly databaseService: IDatabaseService,
+		@IWorkspaceContextService private readonly workspaceService: IWorkspaceContextService,
+		@ILogService private readonly logService: ILogService
+	) {
+		this.initializeDatabase();
+	}
+
+	private async initializeDatabase(): Promise<void> {
+		// Get workspace path
+		const workspace = this.workspaceService.getWorkspace();
+		if (!workspace.folders || workspace.folders.length === 0) {
+			this.logService.info('[DatabaseInitializer] No workspace folder found, skipping database initialization');
+			return;
+		}
+
+		const workspacePath = workspace.folders[0].uri.fsPath;
+		this.logService.info(`[DatabaseInitializer] Initializing database for workspace: ${workspacePath}`);
+
+		try {
+			await this.databaseService.initialize(workspacePath);
+			this.logService.info('[DatabaseInitializer] Database initialized successfully');
+
+			// Check if project exists for this workspace
+			const existingProject = this.databaseService.getProjectByWorkspace(workspacePath);
+			if (!existingProject) {
+				this.logService.info('[DatabaseInitializer] No existing project found for workspace');
+				// Note: Project will be created when user opens Mission Control or starts first task
+			} else {
+				this.logService.info(`[DatabaseInitializer] Found existing project: ${existingProject.name} (${existingProject.id})`);
+			}
+		} catch (error) {
+			this.logService.error('[DatabaseInitializer] Error initializing database:', error);
+		}
+	}
+}
+
+// Register database initializer to run on workbench startup
+Registry.as<IWorkbenchContributionsRegistry>(WorkbenchExtensions.Workbench)
+	.registerWorkbenchContribution(DatabaseInitializer, LifecyclePhase.Restored);

@@ -1,31 +1,42 @@
 /*---------------------------------------------------------------------------------------------
- *  Mission Control Webview - React-based Project Manager UI
- *  Location: src/vs/workbench/contrib/aiOrchestrator/browser/missionControlWebview.ts
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { getWindow } from '../../../../base/browser/dom.js';
-import { IWebviewService, IWebviewElement } from '../../../contrib/webview/browser/webview.js';
-import { IAIOrchestratorService } from '../common/aiOrchestratorService.js';
+import { IWebview, IWebviewService } from '../../../contrib/webview/browser/webview.js';
+import { asWebviewUri, webviewGenericCspSource } from '../../webview/common/webview.js';
+import { FileAccess } from '../../../../base/common/network.js';
+import type { AppResourcePath } from '../../../../base/common/network.js';
 
 export class MissionControlWebviewPanel extends Disposable {
-	private webview: IWebviewElement | undefined;
+	private webview: IWebview | undefined;
 
 	constructor(
 		private readonly container: HTMLElement,
-		@IWebviewService private readonly webviewService: IWebviewService,
-		@IAIOrchestratorService private readonly _aiService: IAIOrchestratorService
+		@IWebviewService private readonly webviewService: IWebviewService
 	) {
 		super();
 		this.createWebview();
 	}
 
 	private createWebview(): void {
+		// Get URI for the media directory where React bundle is located
+		const mediaPath: AppResourcePath = 'vs/workbench/contrib/aiOrchestrator/browser/media';
+		const mediaUri = FileAccess.asFileUri(mediaPath);
+
 		// Create webview with proper options
 		const webview = this._register(this.webviewService.createWebviewElement({
-			id: 'missionControl',
-			options: {},
-			contentOptions: {},
+			title: 'Mission Control',
+			options: {
+				enableFindWidget: false,
+				tryRestoreScrollPosition: false,
+			},
+			contentOptions: {
+				allowScripts: true,
+				localResourceRoots: [mediaUri]
+			},
 			extension: undefined
 		}));
 
@@ -55,92 +66,35 @@ export class MissionControlWebviewPanel extends Disposable {
 	}
 
 	private getWebviewHtml(): string {
-		// TODO: Load bundled React app instead of inline HTML
-		// This is a temporary placeholder until we set up the React bundling
+		// Get URIs for the React bundle files
+		const jsPath: AppResourcePath = 'vs/workbench/contrib/aiOrchestrator/browser/media/mission-control-bundle.js';
+		const cssPath: AppResourcePath = 'vs/workbench/contrib/aiOrchestrator/browser/media/mission-control-bundle.css';
+
+		const jsUri = FileAccess.asFileUri(jsPath);
+		const cssUri = FileAccess.asFileUri(cssPath);
+
+		// Convert to webview-safe URIs
+		const jsWebviewUri = asWebviewUri(jsUri, undefined);
+		const cssWebviewUri = asWebviewUri(cssUri, undefined);
+
 		return `<!DOCTYPE html>
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="Content-Security-Policy"
+		content="default-src 'none'; style-src ${webviewGenericCspSource} 'unsafe-inline'; script-src ${webviewGenericCspSource} 'unsafe-inline'; img-src ${webviewGenericCspSource} https:; font-src ${webviewGenericCspSource};">
 	<title>Mission Control</title>
-	<style>
-		body {
-			margin: 0;
-			padding: 20px;
-			font-family: var(--vscode-font-family);
-			color: var(--vscode-foreground);
-			background-color: var(--vscode-editor-background);
-		}
-		.header {
-			display: flex;
-			align-items: center;
-			gap: 12px;
-			margin-bottom: 24px;
-		}
-		.logo {
-			font-size: 24px;
-		}
-		h1 {
-			font-size: 20px;
-			font-weight: 600;
-			margin: 0;
-		}
-		.placeholder {
-			padding: 40px;
-			text-align: center;
-			background-color: var(--vscode-editor-inactiveSelectionBackground);
-			border-radius: 8px;
-		}
-		.placeholder-icon {
-			font-size: 48px;
-			margin-bottom: 16px;
-		}
-		.placeholder-text {
-			color: var(--vscode-descriptionForeground);
-			margin-bottom: 24px;
-		}
-		.button {
-			padding: 8px 16px;
-			background-color: var(--vscode-button-background);
-			color: var(--vscode-button-foreground);
-			border: none;
-			border-radius: 4px;
-			cursor: pointer;
-			font-family: var(--vscode-font-family);
-		}
-		.button:hover {
-			background-color: var(--vscode-button-hoverBackground);
-		}
-	</style>
+	<link rel="stylesheet" href="${cssWebviewUri.toString()}">
 </head>
 <body>
-	<div class="header">
-		<div class="logo">🚀</div>
-		<h1>Mission Control</h1>
-	</div>
-
-	<div class="placeholder">
-		<div class="placeholder-icon">📊</div>
-		<div class="placeholder-text">
-			Mission Control Dashboard is loading...<br>
-			React components will be bundled and loaded here.
-		</div>
-		<button class="button" onclick="sendMessage('test')">Test Message Passing</button>
-	</div>
-
+	<div id="root"></div>
 	<script>
+		// Set up VS Code API for React app
 		const vscode = acquireVsCodeApi();
-
-		function sendMessage(type) {
-			vscode.postMessage({ type: type, data: 'Hello from webview!' });
-		}
-
-		// Listen for messages from extension
-		window.addEventListener('message', event => {
-			const message = event.data;
-			console.log('Received message from extension:', message);
-		});
+		window.vscodeApi = vscode;
 	</script>
+	<script src="${jsWebviewUri.toString()}"></script>
 </body>
 </html>`;
 	}

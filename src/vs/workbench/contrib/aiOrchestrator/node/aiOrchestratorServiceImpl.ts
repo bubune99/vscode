@@ -1,6 +1,6 @@
 /*---------------------------------------------------------------------------------------------
- *  AI Orchestrator Service Implementation - Refactored for Direct LLM Integration
- *  Location in VS Code fork: src/vs/workbench/contrib/aiOrchestrator/node/aiOrchestratorServiceImpl.ts
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
 import { Emitter } from '../../../../base/common/event.js';
@@ -22,6 +22,7 @@ import {
 } from '../common/aiOrchestratorService.js';
 import { ILanguageModelsService, IChatMessage, IChatResponsePart, ChatMessageRole } from '../../chat/common/languageModels.js';
 import { ExtensionIdentifier } from '../../../../platform/extensions/common/extensions.js';
+import { IDatabaseService } from '../common/databaseService.js';
 
 export class AIOrchestratorService extends Disposable implements IAIOrchestratorService {
 
@@ -29,13 +30,61 @@ export class AIOrchestratorService extends Disposable implements IAIOrchestrator
 	readonly onDidChangeTasks = this._onDidChangeTasks.event;
 
 	private tasks: Map<string, ITask> = new Map();
+	private currentProjectId: string | null = null;
 
 	constructor(
 		@ILanguageModelsService private readonly languageModelsService: ILanguageModelsService,
-		@ILogService private readonly logService: ILogService
+		@ILogService private readonly logService: ILogService,
+		@IDatabaseService private readonly databaseService: IDatabaseService
 	) {
 		super();
 		this.logService.info('[AIOrchestratorService] Service initialized');
+	}
+
+	/**
+	 * Get or create a project for the current workspace
+	 */
+	async getOrCreateProject(context: IProjectContext): Promise<string> {
+		if (!this.databaseService.isInitialized()) {
+			this.logService.warn('[AIOrchestratorService] Database not initialized, cannot create project');
+			// Return a temporary ID for in-memory operation
+			return 'temp-project-' + generateUuid();
+		}
+
+		// Check if we already have a project for this workspace
+		if (context.workspace) {
+			const existingProject = this.databaseService.getProjectByWorkspace(context.workspace.fsPath);
+			if (existingProject) {
+				this.currentProjectId = existingProject.id;
+				this.logService.info(`[AIOrchestratorService] Using existing project: ${existingProject.name} (${existingProject.id})`);
+				return existingProject.id;
+			}
+		}
+
+		// Create a new project
+		try {
+			const project = this.databaseService.createProject({
+				name: context.workspace?.fsPath.split(/[/\\]/).pop() || 'Untitled Project',
+				description: 'AI Orchestrator managed project',
+				workspace_path: context.workspace?.fsPath || '',
+				tech_stack: [], // Will be populated as we analyze the codebase
+				execution_mode: 'semi_autonomous'
+			});
+
+			this.currentProjectId = project.id;
+			this.logService.info(`[AIOrchestratorService] Created new project: ${project.name} (${project.id})`);
+			return project.id;
+		} catch (error) {
+			this.logService.error('[AIOrchestratorService] Error creating project:', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Get the current project ID
+	 */
+	getCurrentProjectId(): string | null {
+		return this.currentProjectId;
 	}
 
 	/**
@@ -223,18 +272,18 @@ Available agents:
 Analyze the user's request and create a structured task plan.
 Output JSON format:
 {
-  "analysis": "Brief analysis of what needs to be done",
-  "tasks": [
-    {
-      "agent": "v0" | "claude" | "gemini" | "gpt",
-      "description": "What this task does",
-      "instructions": "Detailed instructions for the agent",
-      "priority": 1,
-      "dependencies": [],
-      "targetFiles": []
-    }
-  ],
-  "estimatedDuration": 15
+	"analysis": "Brief analysis of what needs to be done",
+	"tasks": [
+		{
+			"agent": "v0" | "claude" | "gemini" | "gpt",
+			"description": "What this task does",
+			"instructions": "Detailed instructions for the agent",
+			"priority": 1,
+			"dependencies": [],
+			"targetFiles": []
+		}
+	],
+	"estimatedDuration": 15
 }`;
 
 		const contextInfo = `
