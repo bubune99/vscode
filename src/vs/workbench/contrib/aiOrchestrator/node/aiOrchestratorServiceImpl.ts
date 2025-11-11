@@ -23,6 +23,7 @@ import {
 import { ILanguageModelsService, IChatMessage, IChatResponsePart, ChatMessageRole } from '../../chat/common/languageModels.js';
 import { ExtensionIdentifier } from '../../../../platform/extensions/common/extensions.js';
 import { IDatabaseService } from '../common/databaseService.js';
+import { ProjectScanner } from './projectScanner.js';
 
 export class AIOrchestratorService extends Disposable implements IAIOrchestratorService {
 
@@ -31,6 +32,7 @@ export class AIOrchestratorService extends Disposable implements IAIOrchestrator
 
 	private tasks: Map<string, ITask> = new Map();
 	private currentProjectId: string | null = null;
+	private readonly projectScanner: ProjectScanner;
 
 	constructor(
 		@ILanguageModelsService private readonly languageModelsService: ILanguageModelsService,
@@ -38,6 +40,7 @@ export class AIOrchestratorService extends Disposable implements IAIOrchestrator
 		@IDatabaseService private readonly databaseService: IDatabaseService
 	) {
 		super();
+		this.projectScanner = new ProjectScanner(logService);
 		this.logService.info('[AIOrchestratorService] Service initialized');
 	}
 
@@ -61,18 +64,22 @@ export class AIOrchestratorService extends Disposable implements IAIOrchestrator
 			}
 		}
 
-		// Create a new project
+		// Create a new project with automatic tech stack detection
 		try {
+			// Scan workspace to detect tech stack
+			this.logService.info('[AIOrchestratorService] Scanning workspace for tech stack...');
+			const analysis = await this.projectScanner.scanWorkspace(context.workspace?.fsPath || '');
+
 			const project = this.databaseService.createProject({
 				name: context.workspace?.fsPath.split(/[/\\]/).pop() || 'Untitled Project',
-				description: 'AI Orchestrator managed project',
+				description: `${analysis.projectType} project using ${analysis.primaryLanguage}`,
 				workspace_path: context.workspace?.fsPath || '',
-				tech_stack: [], // Will be populated as we analyze the codebase
+				tech_stack: analysis.techStack, // Auto-populated from scanner!
 				execution_mode: 'semi_autonomous'
 			});
 
 			this.currentProjectId = project.id;
-			this.logService.info(`[AIOrchestratorService] Created new project: ${project.name} (${project.id})`);
+			this.logService.info(`[AIOrchestratorService] Created new project: ${project.name} (${project.id}) with tech stack: ${analysis.techStack.join(', ')}`);
 			return project.id;
 		} catch (error) {
 			this.logService.error('[AIOrchestratorService] Error creating project:', error);
@@ -227,6 +234,35 @@ export class AIOrchestratorService extends Disposable implements IAIOrchestrator
 	 */
 	getAvailableAgents(): IAgentInfo[] {
 		return Object.values(AGENT_CAPABILITIES);
+	}
+
+	/**
+	 * Scan an existing project to detect and update tech stack
+	 */
+	async scanExistingProject(workspacePath: string): Promise<{ techStack: string[]; description: string }> {
+		this.logService.info(`[AIOrchestratorService] Scanning existing project: ${workspacePath}`);
+
+		try {
+			// Scan workspace
+			const analysis = await this.projectScanner.scanWorkspace(workspacePath);
+
+			// Update existing project if found
+			const existingProject = this.databaseService.getProjectByWorkspace(workspacePath);
+			if (existingProject) {
+				const description = `${analysis.projectType} project using ${analysis.primaryLanguage}`;
+				this.databaseService.updateProjectTechStack(existingProject.id, analysis.techStack, description);
+				this.logService.info(`[AIOrchestratorService] Updated project ${existingProject.id} with detected tech stack`);
+			}
+
+			return {
+				techStack: analysis.techStack,
+				description: `${analysis.projectType} project using ${analysis.primaryLanguage}`
+			};
+
+		} catch (error) {
+			this.logService.error('[AIOrchestratorService] Error scanning existing project:', error);
+			throw error;
+		}
 	}
 
 	// =========================================================================

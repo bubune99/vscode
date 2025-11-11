@@ -63,7 +63,11 @@ async function doSetupNLS(): Promise<INLSConfiguration | undefined> {
 
 			globalThis._VSCODE_NLS_LANGUAGE = nlsConfig?.resolvedLanguage;
 		} catch (e) {
-			console.error(`Error reading VSCODE_NLS_CONFIG from environment: ${e}`);
+			try {
+				console.error(`Error reading VSCODE_NLS_CONFIG from environment: ${e}`);
+			} catch {
+				// Ignore EPIPE errors when console is not available
+			}
 		}
 	}
 
@@ -77,14 +81,22 @@ async function doSetupNLS(): Promise<INLSConfiguration | undefined> {
 	try {
 		globalThis._VSCODE_NLS_MESSAGES = JSON.parse((await fs.promises.readFile(messagesFile)).toString());
 	} catch (error) {
-		console.error(`Error reading NLS messages file ${messagesFile}: ${error}`);
+		try {
+			console.error(`Error reading NLS messages file ${messagesFile}: ${error}`);
+		} catch {
+			// Ignore EPIPE errors when console is not available
+		}
 
 		// Mark as corrupt: this will re-create the language pack cache next startup
 		if (nlsConfig?.languagePack?.corruptMarkerFile) {
 			try {
 				await fs.promises.writeFile(nlsConfig.languagePack.corruptMarkerFile, 'corrupted');
 			} catch (error) {
-				console.error(`Error writing corrupted NLS marker file: ${error}`);
+				try {
+					console.error(`Error writing corrupted NLS marker file: ${error}`);
+				} catch {
+					// Ignore EPIPE errors when console is not available
+				}
 			}
 		}
 

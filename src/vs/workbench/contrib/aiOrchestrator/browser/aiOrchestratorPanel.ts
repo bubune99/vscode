@@ -3,6 +3,7 @@
  *  Location in VS Code fork: src/vs/workbench/contrib/aiOrchestrator/browser/aiOrchestratorPanel.ts
  *--------------------------------------------------------------------------------------------*/
 
+import './media/aiOrchestratorPanel.css';
 import { localize } from '../../../../nls.js';
 import { DisposableStore } from '../../../../base/common/lifecycle.js';
 import { ViewPane } from '../../../browser/parts/views/viewPane.js';
@@ -53,6 +54,9 @@ export class AIOrchestratorPanel extends ViewPane {
 
 		container.classList.add('ai-orchestrator-panel');
 
+		// Create Mission Control button at the top
+		this.renderMissionControlButton(container);
+
 		// Create header with agent buttons
 		this.renderAgentButtons(container);
 
@@ -67,50 +71,83 @@ export class AIOrchestratorPanel extends ViewPane {
 		this.pollInterval = setInterval(() => this.refreshTasks(), 2000);
 	}
 
+	private renderMissionControlButton(container: HTMLElement): void {
+		const buttonContainer = $('.mission-control-button-container');
+		container.appendChild(buttonContainer);
+
+		const missionControlButton = this.disposables.add(new Button(buttonContainer, defaultButtonStyles));
+		missionControlButton.label = '$(rocket) Open Mission Control Dashboard';
+		missionControlButton.onDidClick(() => {
+			this.commandService.executeCommand('aiOrchestrator.openMissionControl');
+		});
+
+		// Scan Project button
+		const scanButton = this.disposables.add(new Button(buttonContainer, { ...defaultButtonStyles, secondary: true }));
+		scanButton.label = '$(search) Scan Project';
+		scanButton.onDidClick(() => {
+			this.commandService.executeCommand('aiOrchestrator.scanProject');
+		});
+	}
+
 	private renderAgentButtons(container: HTMLElement): void {
 		const buttonsContainer = $('.agent-buttons-container');
 		container.appendChild(buttonsContainer);
 
+		// Welcome header
 		const header = $('.header');
-		header.textContent = localize('aiOrchestrator.selectAgent', "Select AI Agent");
+		header.textContent = localize('aiOrchestrator.welcome', "AI-Powered Development");
 		buttonsContainer.appendChild(header);
+
+		// Description
+		const description = $('.description');
+		description.textContent = localize('aiOrchestrator.welcomeDesc', "Use AI to plan, architect, and build your project. Click below to start chatting with AI agents.");
+		buttonsContainer.appendChild(description);
+
+		// Start Building button (primary action)
+		const startButton = this.disposables.add(new Button(buttonsContainer, { ...defaultButtonStyles }));
+		startButton.label = '$(comment-discussion) Start Building with AI Chat';
+		startButton.element.classList.add('prominent-button');
+		startButton.onDidClick(() => {
+			this.commandService.executeCommand('aiOrchestrator.startBuilding');
+		});
+
+		// Divider
+		const divider = $('.divider');
+		divider.textContent = '—————  or use quick actions  —————';
+		buttonsContainer.appendChild(divider);
 
 		const agentGrid = $('.agent-grid');
 		buttonsContainer.appendChild(agentGrid);
 
-		// v0 Button
-		const v0Button = this.disposables.add(new Button(agentGrid, defaultButtonStyles));
+		// v0 Button (Quick action - currently disabled)
+		const v0Button = this.disposables.add(new Button(agentGrid, { ...defaultButtonStyles, secondary: true }));
 		v0Button.label = '$(robot) v0';
+		v0Button.enabled = false; // Disabled for MVP - use chat instead
 		v0Button.onDidClick(() => {
-			// TODO: Properly register telemetry event
-			// this.telemetryService.publicLog2('aiOrchestrator.agentSelected', { agent: 'v0' });
 			this.commandService.executeCommand('aiOrchestrator.runV0Agent');
 		});
 
-		// Claude Button
-		const claudeButton = this.disposables.add(new Button(agentGrid, defaultButtonStyles));
+		// Claude Button (Quick action - currently disabled)
+		const claudeButton = this.disposables.add(new Button(agentGrid, { ...defaultButtonStyles, secondary: true }));
 		claudeButton.label = '$(sparkle) Claude';
+		claudeButton.enabled = false; // Disabled for MVP - use chat instead
 		claudeButton.onDidClick(() => {
-			// TODO: Properly register telemetry event
-			// this.telemetryService.publicLog2('aiOrchestrator.agentSelected', { agent: 'claude' });
 			this.commandService.executeCommand('aiOrchestrator.runClaudeAgent');
 		});
 
-		// Gemini Button
-		const geminiButton = this.disposables.add(new Button(agentGrid, defaultButtonStyles));
+		// Gemini Button (Quick action - currently disabled)
+		const geminiButton = this.disposables.add(new Button(agentGrid, { ...defaultButtonStyles, secondary: true }));
 		geminiButton.label = '$(sparkle) Gemini';
+		geminiButton.enabled = false; // Disabled for MVP - use chat instead
 		geminiButton.onDidClick(() => {
-			// TODO: Properly register telemetry event
-			// this.telemetryService.publicLog2('aiOrchestrator.agentSelected', { agent: 'gemini' });
 			this.commandService.executeCommand('aiOrchestrator.runGeminiAgent');
 		});
 
-		// GPT Button
-		const gptButton = this.disposables.add(new Button(agentGrid, defaultButtonStyles));
+		// GPT Button (Quick action - currently disabled)
+		const gptButton = this.disposables.add(new Button(agentGrid, { ...defaultButtonStyles, secondary: true }));
 		gptButton.label = '$(sparkle) GPT';
+		gptButton.enabled = false; // Disabled for MVP - use chat instead
 		gptButton.onDidClick(() => {
-			// TODO: Properly register telemetry event
-			// this.telemetryService.publicLog2('aiOrchestrator.agentSelected', { agent: 'gpt' });
 			this.commandService.executeCommand('aiOrchestrator.runGPTAgent');
 		});
 	}
@@ -130,7 +167,7 @@ export class AIOrchestratorPanel extends ViewPane {
 
 		if (this.tasks.length === 0) {
 			const emptyState = $('.empty-state');
-			emptyState.textContent = localize('aiOrchestrator.noTasks', "No tasks yet. Select an AI agent above to get started.");
+			emptyState.textContent = localize('aiOrchestrator.noTasks', "No tasks yet. Click 'Start Building with AI Chat' above to begin.");
 			this.tasksListContainer.appendChild(emptyState);
 			return;
 		}

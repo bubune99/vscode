@@ -24,6 +24,11 @@ export interface IAIOrchestratorService {
 	readonly onDidChangeTasks: Event<ITask>;
 
 	/**
+	 * Get or create a project for the current workspace
+	 */
+	getOrCreateProject(context: IProjectContext): Promise<string>;
+
+	/**
 	 * Plan tasks from a user request
 	 * Analyzes the request and creates a structured task plan with agent delegation
 	 */
@@ -58,6 +63,12 @@ export interface IAIOrchestratorService {
 	 * Get available specialist agents
 	 */
 	getAvailableAgents(): IAgentInfo[];
+
+	/**
+	 * Scan an existing project to detect and update tech stack
+	 * Useful for onboarding existing projects into Mission Control
+	 */
+	scanExistingProject(workspacePath: string): Promise<{ techStack: string[]; description: string }>;
 }
 
 /**

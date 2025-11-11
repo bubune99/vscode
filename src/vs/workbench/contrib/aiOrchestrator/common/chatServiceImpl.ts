@@ -16,8 +16,8 @@ export class ChatService extends Disposable implements IChatService {
 	readonly _serviceBrand: undefined;
 
 	// Track current conversation and project for database persistence
-	private currentConversationId: string | null = null;
 	private currentProjectId: string | null = null;
+	private currentConversationId: string | null = null;
 
 	constructor(
 		@ILogService private readonly logService: ILogService,

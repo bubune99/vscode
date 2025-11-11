@@ -161,6 +161,7 @@ export interface IDatabaseService {
 	getProject(id: string): IProject | null;
 	getProjectByWorkspace(workspacePath: string): IProject | null;
 	updateProjectStatus(id: string, status: ProjectStatus): void;
+	updateProjectTechStack(id: string, techStack: string[], description?: string): void;
 	getAllProjects(): IProject[];
 
 	// Conversation operations

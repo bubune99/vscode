@@ -170,6 +170,10 @@ import './contrib/multiDiffEditor/browser/multiDiffEditor.contribution.js';
 // Remote Tunnel
 import './contrib/remoteTunnel/electron-browser/remoteTunnel.contribution.js';
 
+// AI Orchestrator (Node)
+// TEMPORARILY DISABLED FOR DEBUGGING
+// import './contrib/aiOrchestrator/node/aiOrchestrator.node.contribution.js';
+
 // Chat
 import './contrib/chat/electron-browser/chat.contribution.js';
 import './contrib/inlineChat/electron-browser/inlineChat.contribution.js';

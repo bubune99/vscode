@@ -72,16 +72,15 @@ export class MissionControlEditor extends EditorPane {
 		parent.appendChild(this.container);
 
 		// Create the Mission Control webview
-		this.webviewPanel = this.disposables.add(
-			this.instantiationService.createInstance(
-				MissionControlWebviewPanel,
-				this.container
-			)
-		);
+		const panel = this.instantiationService.createInstance(MissionControlWebviewPanel as any, this.container);
+		this.webviewPanel = this.disposables.add(panel) as MissionControlWebviewPanel;
 	}
 
 	override async setInput(input: MissionControlEditorInput, options: any, context: any, token: CancellationToken): Promise<void> {
 		await super.setInput(input, options, context, token);
+
+		// Track Mission Control opened
+		this.telemetryService.publicLog('aiOrchestrator.missionControlOpened');
 		// Webview is already loaded in createEditor
 	}
 

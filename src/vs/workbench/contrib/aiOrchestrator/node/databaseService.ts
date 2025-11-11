@@ -95,47 +95,6 @@ export class DatabaseService implements IDatabaseService {
 		});
 	}
 
-	private async run(sql: string, ...params: any[]): Promise<void> {
-		if (!this.db) {
-			throw new Error('Database not initialized');
-		}
-		return new Promise((resolve, reject) => {
-			this.db!.run(sql, ...params, function (error: Error | null) {
-				if (error) {
-					return reject(error);
-				}
-				resolve();
-			});
-		});
-	}
-
-	private async get<T = any>(sql: string, ...params: any[]): Promise<T | undefined> {
-		if (!this.db) {
-			throw new Error('Database not initialized');
-		}
-		return new Promise((resolve, reject) => {
-			this.db!.get(sql, ...params, (error: Error | null, row: T) => {
-				if (error) {
-					return reject(error);
-				}
-				resolve(row);
-			});
-		});
-	}
-
-	private async all<T = any>(sql: string, ...params: any[]): Promise<T[]> {
-		if (!this.db) {
-			throw new Error('Database not initialized');
-		}
-		return new Promise((resolve, reject) => {
-			this.db!.all(sql, ...params, (error: Error | null, rows: T[]) => {
-				if (error) {
-					return reject(error);
-				}
-				resolve(rows || []);
-			});
-		});
-	}
 
 	private async initializeSchema(): Promise<void> {
 		if (!this.db) {
@@ -218,7 +177,7 @@ export class DatabaseService implements IDatabaseService {
 		}
 
 		const stmt = this.db.prepare('SELECT * FROM projects WHERE id = ?');
-		const row = stmt.get(id) as IProject | null;
+		const row = stmt.get(id) as unknown as IProject | null;
 		stmt.finalize();
 		return row;
 	}
@@ -229,7 +188,7 @@ export class DatabaseService implements IDatabaseService {
 		}
 
 		const stmt = this.db.prepare('SELECT * FROM projects WHERE workspace_path = ?');
-		const row = stmt.get(workspacePath) as IProject | null;
+		const row = stmt.get(workspacePath) as unknown as IProject | null;
 		stmt.finalize();
 		return row;
 	}
@@ -244,13 +203,33 @@ export class DatabaseService implements IDatabaseService {
 		stmt.finalize();
 	}
 
+	updateProjectTechStack(id: string, techStack: string[], description?: string): void {
+		if (!this.db) {
+			throw new Error('Database not initialized');
+		}
+
+		const tech_stack = JSON.stringify(techStack);
+
+		if (description) {
+			const stmt = this.db.prepare('UPDATE projects SET tech_stack = ?, description = ? WHERE id = ?');
+			stmt.run(tech_stack, description, id);
+			stmt.finalize();
+		} else {
+			const stmt = this.db.prepare('UPDATE projects SET tech_stack = ? WHERE id = ?');
+			stmt.run(tech_stack, id);
+			stmt.finalize();
+		}
+
+		this.logService.info(`[DatabaseService] Updated tech stack for project ${id}:`, techStack);
+	}
+
 	getAllProjects(): IProject[] {
 		if (!this.db) {
 			throw new Error('Database not initialized');
 		}
 
 		const stmt = this.db.prepare('SELECT * FROM projects ORDER BY created_at DESC');
-		const rows = stmt.all() as IProject[];
+		const rows = stmt.all() as unknown as IProject[];
 		stmt.finalize();
 		return rows;
 	}
@@ -292,7 +271,7 @@ export class DatabaseService implements IDatabaseService {
 		}
 
 		const stmt = this.db.prepare('SELECT * FROM conversations WHERE id = ?');
-		const row = stmt.get(id) as IConversation | null;
+		const row = stmt.get(id) as unknown as IConversation | null;
 		stmt.finalize();
 		return row;
 	}
@@ -303,7 +282,7 @@ export class DatabaseService implements IDatabaseService {
 		}
 
 		const stmt = this.db.prepare('SELECT * FROM conversations WHERE project_id = ? ORDER BY created_at DESC');
-		const rows = stmt.all(projectId) as IConversation[];
+		const rows = stmt.all(projectId) as unknown as IConversation[];
 		stmt.finalize();
 		return rows;
 	}
@@ -356,7 +335,7 @@ export class DatabaseService implements IDatabaseService {
 		this.updateConversationLastMessage(data.conversation_id, created_at);
 
 		const stmt2 = this.db.prepare('SELECT * FROM messages WHERE id = ?');
-		const msg = stmt2.get(id) as IMessage;
+		const msg = stmt2.get(id) as unknown as IMessage;
 		stmt2.finalize();
 		return msg;
 	}
@@ -374,7 +353,7 @@ export class DatabaseService implements IDatabaseService {
 		const result = limit ? stmt.all(conversationId, limit) : stmt.all(conversationId);
 		stmt.finalize();
 
-		return result as IMessage[];
+		return result as unknown as IMessage[];
 	}
 
 	getLatestMessages(conversationId: string, count: number): IMessage[] {
@@ -388,7 +367,7 @@ export class DatabaseService implements IDatabaseService {
 			ORDER BY created_at DESC
 			LIMIT ?
 		`);
-		const messages = stmt.all(conversationId, count) as IMessage[];
+		const messages = stmt.all(conversationId, count) as unknown as IMessage[];
 		stmt.finalize();
 		return messages.reverse(); // Return in chronological order
 	}
@@ -445,7 +424,7 @@ export class DatabaseService implements IDatabaseService {
 		}
 
 		const stmt = this.db.prepare('SELECT * FROM tasks WHERE id = ?');
-		const row = stmt.get(id) as ITask | null;
+		const row = stmt.get(id) as unknown as ITask | null;
 		stmt.finalize();
 		return row;
 	}
@@ -466,7 +445,7 @@ export class DatabaseService implements IDatabaseService {
 		}
 
 		const stmt = this.db.prepare('SELECT * FROM tasks WHERE feature_id = ? ORDER BY task_number');
-		const rows = stmt.all(featureId) as ITask[];
+		const rows = stmt.all(featureId) as unknown as ITask[];
 		stmt.finalize();
 		return rows;
 	}
@@ -477,7 +456,7 @@ export class DatabaseService implements IDatabaseService {
 		}
 
 		const stmt = this.db.prepare('SELECT * FROM tasks WHERE assigned_agent = ? ORDER BY priority, created_at');
-		const rows = stmt.all(agentType) as ITask[];
+		const rows = stmt.all(agentType) as unknown as ITask[];
 		stmt.finalize();
 		return rows;
 	}

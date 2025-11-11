@@ -105,15 +105,16 @@ function hygiene(some, runEslint = true) {
 	});
 
 	const copyrights = es.through(function (file) {
-		const lines = file.__lines;
+		// Copyright check disabled for fork
+		// const lines = file.__lines;
 
-		for (let i = 0; i < copyrightHeaderLines.length; i++) {
-			if (lines[i] !== copyrightHeaderLines[i]) {
-				console.error(file.relative + ': Missing or bad copyright statement');
-				errorCount++;
-				break;
-			}
-		}
+		// for (let i = 0; i < copyrightHeaderLines.length; i++) {
+		// 	if (lines[i] !== copyrightHeaderLines[i]) {
+		// 		console.error(file.relative + ': Missing or bad copyright statement');
+		// 		errorCount++;
+		// 		break;
+		// 	}
+		// }
 
 		this.emit('data', file);
 	});

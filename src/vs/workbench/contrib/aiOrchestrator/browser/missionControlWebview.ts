@@ -6,26 +6,24 @@
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { getWindow } from '../../../../base/browser/dom.js';
 import { IWebview, IWebviewService } from '../../../contrib/webview/browser/webview.js';
-import { asWebviewUri, webviewGenericCspSource } from '../../webview/common/webview.js';
-import { FileAccess } from '../../../../base/common/network.js';
-import type { AppResourcePath } from '../../../../base/common/network.js';
+import { webviewGenericCspSource } from '../../webview/common/webview.js';
+import { IAIOrchestratorService } from '../common/aiOrchestratorService.js';
+import { IDatabaseService } from '../common/databaseService.js';
 
 export class MissionControlWebviewPanel extends Disposable {
 	private webview: IWebview | undefined;
 
 	constructor(
 		private readonly container: HTMLElement,
-		@IWebviewService private readonly webviewService: IWebviewService
+		@IWebviewService private readonly webviewService: IWebviewService,
+		@IAIOrchestratorService private readonly orchestratorService: IAIOrchestratorService,
+		@IDatabaseService private readonly databaseService: IDatabaseService
 	) {
 		super();
 		this.createWebview();
 	}
 
 	private createWebview(): void {
-		// Get URI for the media directory where React bundle is located
-		const mediaPath: AppResourcePath = 'vs/workbench/contrib/aiOrchestrator/browser/media';
-		const mediaUri = FileAccess.asFileUri(mediaPath);
-
 		// Create webview with proper options
 		const webview = this._register(this.webviewService.createWebviewElement({
 			title: 'Mission Control',
@@ -35,7 +33,7 @@ export class MissionControlWebviewPanel extends Disposable {
 			},
 			contentOptions: {
 				allowScripts: true,
-				localResourceRoots: [mediaUri]
+				localResourceRoots: []
 			},
 			extension: undefined
 		}));
@@ -66,16 +64,8 @@ export class MissionControlWebviewPanel extends Disposable {
 	}
 
 	private getWebviewHtml(): string {
-		// Get URIs for the React bundle files
-		const jsPath: AppResourcePath = 'vs/workbench/contrib/aiOrchestrator/browser/media/mission-control-bundle.js';
-		const cssPath: AppResourcePath = 'vs/workbench/contrib/aiOrchestrator/browser/media/mission-control-bundle.css';
-
-		const jsUri = FileAccess.asFileUri(jsPath);
-		const cssUri = FileAccess.asFileUri(cssPath);
-
-		// Convert to webview-safe URIs
-		const jsWebviewUri = asWebviewUri(jsUri, undefined);
-		const cssWebviewUri = asWebviewUri(cssUri, undefined);
+		// TODO: Replace with proper React bundle once it's rebuilt without Node.js dependencies
+		// For now, use a simple placeholder to prevent browser 'fs' module errors
 
 		return `<!DOCTYPE html>
 <html lang="en">
@@ -83,18 +73,74 @@ export class MissionControlWebviewPanel extends Disposable {
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<meta http-equiv="Content-Security-Policy"
-		content="default-src 'none'; style-src ${webviewGenericCspSource} 'unsafe-inline'; script-src ${webviewGenericCspSource} 'unsafe-inline'; img-src ${webviewGenericCspSource} https:; font-src ${webviewGenericCspSource};">
+		content="default-src 'none'; style-src ${webviewGenericCspSource} 'unsafe-inline'; script-src ${webviewGenericCspSource} 'unsafe-inline';">
 	<title>Mission Control</title>
-	<link rel="stylesheet" href="${cssWebviewUri.toString()}">
+	<style>
+		body {
+			padding: 20px;
+			font-family: var(--vscode-font-family);
+			color: var(--vscode-foreground);
+			background-color: var(--vscode-editor-background);
+		}
+		h1 {
+			color: var(--vscode-foreground);
+			margin-bottom: 20px;
+		}
+		.section {
+			margin-bottom: 30px;
+			padding: 20px;
+			background-color: var(--vscode-editor-inactiveSelectionBackground);
+			border-radius: 6px;
+		}
+		button {
+			background-color: var(--vscode-button-background);
+			color: var(--vscode-button-foreground);
+			border: none;
+			padding: 8px 16px;
+			cursor: pointer;
+			border-radius: 4px;
+			margin-right: 10px;
+		}
+		button:hover {
+			background-color: var(--vscode-button-hoverBackground);
+		}
+		.message {
+			margin-top: 15px;
+			padding: 10px;
+			background-color: var(--vscode-inputValidation-infoBackground);
+			border-left: 3px solid var(--vscode-inputValidation-infoBorder);
+		}
+	</style>
 </head>
 <body>
-	<div id="root"></div>
+	<h1>🚀 Mission Control</h1>
+
+	<div class="section">
+		<h2>AI Orchestrator Dashboard</h2>
+		<p>Welcome to Mission Control - your central hub for AI-powered development.</p>
+		<div>
+			<button onclick="sendMessage('getTasks')">Load Tasks</button>
+			<button onclick="sendMessage('getProjects')">Load Projects</button>
+		</div>
+		<div id="messages" class="message" style="display:none;"></div>
+	</div>
+
 	<script>
-		// Set up VS Code API for React app
 		const vscode = acquireVsCodeApi();
-		window.vscodeApi = vscode;
+
+		function sendMessage(type) {
+			vscode.postMessage({ type: type });
+			document.getElementById('messages').style.display = 'block';
+			document.getElementById('messages').textContent = 'Requesting ' + type + '...';
+		}
+
+		window.addEventListener('message', event => {
+			const message = event.data;
+			const messagesDiv = document.getElementById('messages');
+			messagesDiv.style.display = 'block';
+			messagesDiv.textContent = 'Received: ' + JSON.stringify(message, null, 2);
+		});
 	</script>
-	<script src="${jsWebviewUri.toString()}"></script>
 </body>
 </html>`;
 	}
@@ -113,18 +159,34 @@ export class MissionControlWebviewPanel extends Disposable {
 				break;
 
 			case 'getTasks':
-				// Send current tasks from orchestrator
-				// Note: Using placeholder for now - need to implement task listing
+				// Send current tasks from orchestrator service
+				const tasks = this.orchestratorService.getAllTasks();
 				this.webview?.postMessage({
 					type: 'tasks',
-					data: [] // TODO: Implement task listing
+					data: tasks
 				});
+				break;
+
+			case 'getProjects':
+				// Get all projects from database
+				if (this.databaseService.isInitialized()) {
+					const projects = this.databaseService.getAllProjects();
+					this.webview?.postMessage({
+						type: 'projects',
+						data: projects
+					});
+				} else {
+					this.webview?.postMessage({
+						type: 'projects',
+						data: []
+					});
+				}
 				break;
 
 			case 'startTask':
 				// Start a task
 				if (message.taskId) {
-					// TODO: Implement task starting
+					// TODO: Implement task starting via orchestrator
 					console.log('Starting task:', message.taskId);
 				}
 				break;

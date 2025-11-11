@@ -1,0 +1,201 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+/* Mission Control Panel Styles */
+
+.ai-orchestrator-panel {
+	padding: 10px;
+}
+
+/* Mission Control Button */
+.mission-control-button-container {
+	margin-bottom: 16px;
+}
+
+.mission-control-button-container .monaco-button {
+	width: 100%;
+	padding: 8px;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+/* Agent Buttons Section */
+.agent-buttons-container {
+	margin-bottom: 20px;
+}
+
+.agent-buttons-container .header {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	opacity: 0.7;
+	margin-bottom: 8px;
+	letter-spacing: 0.5px;
+}
+
+.agent-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px;
+}
+
+.agent-grid .monaco-button {
+	padding: 12px 8px;
+	font-size: 12px;
+	text-align: center;
+}
+
+/* Tasks List */
+.tasks-list {
+	margin-top: 16px;
+}
+
+.empty-state {
+	padding: 20px;
+	text-align: center;
+	opacity: 0.6;
+	font-size: 12px;
+	font-style: italic;
+}
+
+/* Individual Task Item */
+.task-item {
+	border: 1px solid var(--vscode-panel-border);
+	border-radius: 4px;
+	padding: 12px;
+	margin-bottom: 12px;
+	background: var(--vscode-editor-background);
+}
+
+.task-item.status-pending {
+	border-left: 3px solid var(--vscode-editorWarning-foreground);
+}
+
+.task-item.status-in_progress {
+	border-left: 3px solid var(--vscode-editorInfo-foreground);
+}
+
+.task-item.status-completed,
+.task-item.status-done {
+	border-left: 3px solid var(--vscode-testing-iconPassed);
+}
+
+.task-item.status-failed {
+	border-left: 3px solid var(--vscode-editorError-foreground);
+}
+
+.task-item.status-cancelled {
+	border-left: 3px solid var(--vscode-descriptionForeground);
+	opacity: 0.6;
+}
+
+/* Task Header */
+.task-header {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 8px;
+	align-items: center;
+}
+
+.agent-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.agent-badge.agent-v0 {
+	background: var(--vscode-editorInfo-background);
+	color: var(--vscode-editorInfo-foreground);
+}
+
+.agent-badge.agent-claude {
+	background: var(--vscode-editorWarning-background);
+	color: var(--vscode-editorWarning-foreground);
+}
+
+.agent-badge.agent-gemini {
+	background: var(--vscode-charts-purple);
+	color: var(--vscode-editor-background);
+}
+
+.agent-badge.agent-gpt {
+	background: var(--vscode-charts-green);
+	color: var(--vscode-editor-background);
+}
+
+.status-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	background: var(--vscode-badge-background);
+	color: var(--vscode-badge-foreground);
+}
+
+/* Task Description */
+.task-prompt {
+	font-size: 12px;
+	margin-bottom: 12px;
+	line-height: 1.4;
+}
+
+/* Progress Bar */
+.progress-container {
+	height: 4px;
+	background: var(--vscode-progressBar-background);
+	border-radius: 2px;
+	overflow: hidden;
+	margin-bottom: 4px;
+}
+
+.progress-bar {
+	height: 100%;
+	background: var(--vscode-progressBar-background);
+	transition: width 0.3s ease;
+}
+
+.progress-text {
+	font-size: 11px;
+	opacity: 0.7;
+	margin-bottom: 8px;
+}
+
+/* Task Actions */
+.task-actions {
+	display: flex;
+	gap: 8px;
+	margin-top: 12px;
+}
+
+.task-actions .monaco-button {
+	flex: 1;
+	padding: 6px;
+	font-size: 11px;
+}
+
+/* Validation Results */
+.validation-results {
+	font-size: 11px;
+	color: var(--vscode-testing-iconPassed);
+	margin-top: 8px;
+}
+
+.validation-results.has-failures {
+	color: var(--vscode-testing-iconFailed);
+}
+
+/* Branch Name */
+.branch-name {
+	font-size: 11px;
+	opacity: 0.7;
+	margin-top: 4px;
+	font-family: var(--monaco-monospace-font);
+}

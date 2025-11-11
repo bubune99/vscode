@@ -206,13 +206,6 @@ import './contrib/chat/browser/chat.contribution.js';
 import './contrib/inlineChat/browser/inlineChat.contribution.js';
 import './contrib/mcp/browser/mcp.contribution.js';
 
-// AI Orchestrator
-import './contrib/aiOrchestrator/browser/aiOrchestrator.contribution.js';
-
-// Office Integration - Temporarily disabled due to TypeScript errors
-// TODO: Fix Office Integration TypeScript errors and re-enable
-// import './contrib/officeIntegration/browser/office.contribution.js';
-
 // Interactive
 import './contrib/interactive/browser/interactive.contribution.js';
 
@@ -430,5 +423,9 @@ import './contrib/editTelemetry/browser/editTelemetry.contribution.js';
 
 // Opener
 import './contrib/opener/browser/opener.contribution.js';
+
+// AI Orchestrator
+// TEMPORARILY DISABLED FOR DEBUGGING
+// import './contrib/aiOrchestrator/browser/aiOrchestrator.contribution.js';
 
 //#endregion
